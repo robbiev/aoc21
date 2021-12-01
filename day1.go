@@ -28,7 +28,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println(numberOfTimesDepthIncreases(input))
+	if len(os.Args) < 2 {
+		log.Fatal("specify '1' or '2'")
+	}
+	if os.Args[1] == "1" {
+		fmt.Println(numberOfTimesDepthIncreases(input))
+	} else if os.Args[1] == "2" {
+		fmt.Println(numberOfTimesDepthIncreasesSliding(input))
+	} else {
+		log.Fatal("specify '1' or '2'")
+	}
 }
 
 func numberOfTimesDepthIncreases(input []int) int {
@@ -41,6 +50,26 @@ func numberOfTimesDepthIncreases(input []int) int {
 		previous := input[i-1]
 		current := input[i]
 		if current > previous {
+			increases++
+		}
+	}
+
+	return increases
+}
+
+func numberOfTimesDepthIncreasesSliding(input []int) int {
+	if len(input) < 4 {
+		return 0
+	}
+
+	lastThreeSum := input[0] + input[1] + input[2]
+
+	var increases int
+	for i := 3; i < len(input); i++ {
+		a := lastThreeSum
+		b := a - input[i-3] + input[i]
+		lastThreeSum = b
+		if b > a {
 			increases++
 		}
 	}
