@@ -22,9 +22,7 @@ func TestExamplePart1(t *testing.T) {
 		lines = append(lines, strings.Fields(line))
 	}
 
-	in := parseInput(lines)
-
-	actual := part1(in, 10)
+	actual := findOverlaps(lines, false)
 
 	const expected = 5
 
@@ -39,15 +37,7 @@ func TestExamplePart2(t *testing.T) {
 		lines = append(lines, strings.Fields(line))
 	}
 
-	in := parseInput2(lines)
-
-	// in = []line{{
-	// 	from: coord{9, 7},
-	// 	to:   coord{7, 9},
-	// 	from: coord{1, 1},
-	// 	to:   coord{3, 3},
-	// }}
-	actual := part2(in, 10)
+	actual := findOverlaps(lines, true)
 
 	const expected = 12
 
