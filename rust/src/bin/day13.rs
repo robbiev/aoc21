@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::collections::HashSet;
+use std::cmp::max;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 struct Point {
@@ -7,76 +8,58 @@ struct Point {
     y: i32,
 }
 
+type Bounds = Point;
+
 #[derive(Debug)]
 struct Paper {
 	dots:  Vec<Point>,
-	folds: Vec<Point>,
+	folds: Vec<Fold>,
 }
 
-fn fold_x(x: i32, dot: &Point) -> Point {
-    if dot.x < x {
-        return dot.clone() // we fold left only
-    }
-    Point{
-        x: dot.x - ((dot.x - x) * 2),
-        y: dot.y,
-    }
+#[derive(Debug)]
+enum Fold {
+    Left(i32),
+    Up(i32)
 }
 
-fn fold_y(y: i32, dot: &Point) -> Point {
-    if dot.y < y {
-        return dot.clone() // we fold left only
+fn fold_index(target_index: i32, fold_index: i32) -> i32 {
+    if target_index < fold_index {
+        return target_index // only fold left/up
     }
-    Point{
-        x: dot.x,
-        y: dot.y - ((dot.y - y) * 2),
-    }
+    target_index - ((target_index - fold_index) * 2)
 }
 
 fn solve(paper: Paper, max_folds: usize) -> i32 {
-    let mut dot_map = HashSet::<Point>::new();
-    let mut bounds = Point{ x: 0, y: 0 };
+    let mut dot_set = HashSet::<Point>::with_capacity(paper.dots.len());
+    let mut bounds = Bounds{ x: 0, y: 0 };
     for dot in paper.dots {
-        if dot.x > bounds.x {
-            bounds.x = dot.x;
-        }
-        if dot.y > bounds.y {
-            bounds.y = dot.y;
-        }
-        dot_map.insert(dot);
+        bounds.x = max(bounds.x, dot.x);
+        bounds.y = max(bounds.y, dot.y);
+        dot_set.insert(dot);
     }
 
     for fold in &paper.folds[..max_folds] {
-        let fold_func: Box<dyn Fn(&Point) -> Point> = if fold.x != 0 {
-            bounds.x = bounds.x - fold.x - 1;
-            Box::new(|dot| fold_x(fold.x, dot))
-        } else if fold.y != 0 {
-            bounds.y = bounds.y - fold.y - 1;
-            Box::new(|dot| fold_y(fold.y, dot))
-        } else {
-            Box::new(|dot| dot.clone())
-        };
-
-        let mut replacements = Vec::<Point>::new();
-        for dot in &dot_map {
-            let new_dot = fold_func(dot);
-            replacements.push(new_dot);
+        match fold {
+            Fold::Left(x) => bounds.x -= x + 1,
+            Fold::Up(y) => bounds.y -= y + 1,
         }
-        for replace in replacements {
-            dot_map.insert(replace);
-        }
-    }
 
-    let mut dot_count: i32 = 0;
-    for dot in &dot_map {
-        if dot.x >= 0 && dot.x <= bounds.x && dot.y >= 0 && dot.y <= bounds.y {
-            dot_count += 1;
+        let mut folded_dots = Vec::<Point>::new();
+        for dot in &dot_set {
+            let folded_dot = match fold {
+                Fold::Left(x) => Point{ x: fold_index(dot.x, *x), y: dot.y },
+                Fold::Up(y) => Point{ x: dot.x, y: fold_index(dot.y, *y) },
+            };
+            folded_dots.push(folded_dot);
+        }
+        for folded_dot in folded_dots {
+            dot_set.insert(folded_dot);
         }
     }
 
     for y in 0..=bounds.y {
         for x in 0..=bounds.x {
-            if dot_map.contains(&Point{ x, y }) {
+            if dot_set.contains(&Point{ x, y }) {
                 print!("{}", "#");
             } else {
                 print!("{}", ".");
@@ -85,7 +68,9 @@ fn solve(paper: Paper, max_folds: usize) -> i32 {
         println!();
     }
 
-    dot_count
+    dot_set.iter()
+        .filter(|Point { x, y }| (0..=bounds.x).contains(x) && (0..=bounds.y).contains(y))
+        .count() as i32
 }
 
 const INPUT: &str = include_str!("day13_input.txt");
@@ -102,8 +87,8 @@ fn parse_input(input_txt: &str) -> Result<Paper, Box<dyn Error>> {
                 let xy = split.next().ok_or("")?;
                 let amount = split.next().ok_or("")?.parse()?;
                 match xy {
-                    "x" => input.folds.push(Point{ x: amount, y: 0 }),
-                    "y" => input.folds.push(Point{ x: 0, y: amount }),
+                    "x" => input.folds.push(Fold::Left(amount)),
+                    "y" => input.folds.push(Fold::Up(amount)),
                     _ => continue
                 };
             },
@@ -128,9 +113,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-fn test_fold_y() -> Result<(), Box<dyn Error>> {
-    let actual = fold_y(7, &Point{ x: 0, y: 14 });
-    let expected = Point { x: 0, y: 0 };
+fn test_fold_index() -> Result<(), Box<dyn Error>> {
+    let actual = fold_index(14, 7);
+    let expected = 0;
     assert_eq!(actual, expected);
     Ok(())
 }
